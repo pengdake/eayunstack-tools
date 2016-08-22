@@ -1,3 +1,5 @@
+import eventlet
+eventlet.monkey_patch()
 from eayunstack_tools.logger import StackLOG as LOG
 from eayunstack_tools.logger import fmt_excep_msg
 from eayunstack_tools.utils import NODE_ROLE
@@ -164,6 +166,7 @@ def port_check_one(pid, l3_host=None):
             LOG.debug('this port is normal port, do not need to check gateway')
 
 def vrouter_check_one(rid):
+    LOG.info('start checking route %s[%s]' % (router['name'], router['id']))
     cmd = 'neutron router-port-list %s -f csv -F id -F name' % (rid)
     out = run_command(cmd)
     ports = []
@@ -176,6 +179,7 @@ def vrouter_check_one(rid):
             LOG.debug('start checking port %s[%s]' % (port['name'], port['id']))
             port_check_one(port['id'], l3_host)
             LOG.debug('finish checking port %s[%s]' % (port['name'], port['id']))
+    LOG.info('finish checking route %s[%s]' % (router['name'], router['id']))
     # TODO: check dhcp?
 
 
@@ -209,10 +213,12 @@ def _vrouter_check(parser):
         # 2) Check every router one by one: .e.g. status, ip address ..., this
         #    is done on neutron node which namespace belong to.
         # tenant ID
-        for router in routers:
-            LOG.info('start checking route %s[%s]' % (router['name'], router['id']))
-            vrouter_check_one(router['id'])
-            LOG.info('finish checking route %s[%s]' % (router['name'], router['id']))
+        pool = eventlet.GreenPool()
+        pool.imap(vrouter_check_one, [router['id'] for router in routers])
+        #for router in routers:
+        #    LOG.info('start checking route %s[%s]' % (router['name'], router['id']))
+        #    vrouter_check_one(router['id'])
+        #    LOG.info('finish checking route %s[%s]' % (router['name'], router['id']))
 
 
 def vrouter_check(parser):
