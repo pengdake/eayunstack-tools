@@ -119,6 +119,7 @@ def check_all_nodes(check_obj):
             result = run_doctor_on_nodes(nodes, check_cmd)
             for res in result:
                 LOG.info(res, remote=True)
+                break
 
 def get_crm_resource_list():
     resource_list = []
